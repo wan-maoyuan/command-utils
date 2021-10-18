@@ -36,14 +36,15 @@ type monitorTask struct {
 }
 
 var (
-	dockerClient *client.Client // docker 监控客户端
-	flag         = true         // 程序是否继续运行的标志
-	taskList     []monitorTask  // 监控任务列表
+	dockerClient  *client.Client // docker 监控客户端
+	memoryDivisor = 1024 * 1024  // memory divite number, default convert M
+	flag          = true         // 程序是否继续运行的标志
+	taskList      []monitorTask  // 监控任务列表
 )
 
 func init() {
 	pflag.String("id", "", "need monite container ID,split by space")
-	pflag.String("path", "/data", "path to sava data file")
+	pflag.String("memory_unit", "M", "memory usage unit, option: K,M,G ")
 
 	pflag.Parse()
 
@@ -52,6 +53,7 @@ func init() {
 
 func main() {
 	initDockerClient()
+	initMemoryDivisor()
 	initMonitorTask()
 
 	for _, task := range taskList {
@@ -67,6 +69,20 @@ func main() {
 	fmt.Println("stop .........")
 }
 
+func initMemoryDivisor() {
+	unit := viper.GetString("memory_unit")
+	switch unit {
+	case "K":
+		memoryDivisor = 1 << 10
+	case "M":
+		memoryDivisor = 1 << 20
+	case "G":
+		memoryDivisor = 1 << 30
+	default:
+		fmt.Println("input memory_unit is error, option: K, M, G")
+	}
+}
+
 // 初始化 DockerClient
 func initDockerClient() {
 	var err error
@@ -80,8 +96,11 @@ func initDockerClient() {
 
 // 初始化监控任务列表
 func initMonitorTask() {
-	dataDir := viper.Get("path").(string) // 路径
-	dataDir = handlePath(dataDir)
+	// dataDir := viper.Get("path").(string) // 路径
+	dataDir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("get workpath is error: ", err)
+	}
 
 	idString := viper.Get("id").(string) // 输入的 id 字符串
 	ids := handleId(idString)
@@ -93,24 +112,6 @@ func initMonitorTask() {
 		task.dataSavePath = dataDir + "/" + id + ".csv"
 		taskList = append(taskList, task)
 	}
-}
-
-// 判断路径是否为空，是否合法，是否存在
-func handlePath(dir string) string {
-	if dir == "" {
-		panic("path to sava file is empty")
-	}
-
-	if string(dir[len(dir)-1]) == "/" {
-		dir = dir[:len(dir)-1]
-	}
-
-	if _, err := os.Stat(dir); err != nil {
-		fmt.Println(err)
-		panic("input path is invalid")
-	}
-
-	return dir
 }
 
 // 处理输入的 id 字符串
@@ -160,10 +161,12 @@ func (task *monitorTask) run() {
 	for flag {
 		info, err := getStatus(task.containerID)
 		var msg = ""
+		memory := info.MemoryStatus.Usage / memoryDivisor
+
 		if err != nil {
-			msg = strconv.Itoa(timeIndex) + "," + " " + " " + "\n"
+			msg = strconv.Itoa(timeIndex) + "," + " ," + " " + "\n"
 		} else {
-			msg = strconv.Itoa(timeIndex) + "," + strconv.Itoa(info.MemoryStatus.Usage) + strconv.Itoa(info.CPUStatus.UsePercent) + "\n"
+			msg = strconv.Itoa(timeIndex) + "," + strconv.Itoa(memory) + "," + strconv.Itoa(info.CPUStatus.UsePercent) + "\n"
 		}
 		_, err = csvFile.WriteString(msg)
 		if err != nil {
