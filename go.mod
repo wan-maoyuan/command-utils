@@ -7,6 +7,7 @@ require (
 	github.com/docker/docker v20.10.9+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/robfig/cron v1.2.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.9.0
 	google.golang.org/grpc v1.41.0 // indirect
