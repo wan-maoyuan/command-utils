@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	CheckInURL = "https://cyooo.co/user/checkin"
-	LoginURL   = "https://cyooo.co/auth/login"
+	CheckInURL = "https://cyoooo.cc/user/checkin"
+	LoginURL   = "https://cyoooo.cc/auth/login"
 	email      = ""
 	passwd     = ""
 )
@@ -26,7 +26,7 @@ type CheckStatus struct {
 
 func main() {
 	c := cron.New()
-	spec := "00 30 22 * * ?" // 每天晚上10：30执行任务
+	spec := "00 00 09 * * ?" // 每天早上09：00执行任务
 	c.AddFunc(spec, func() {
 		cookie := getCookie()
 		if checkIn(cookie) {
